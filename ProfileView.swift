@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct ProfileView: View {
     @State private var showingSettings = false
@@ -36,19 +37,25 @@ struct ProfileView: View {
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \DailyAction.date, order: .reverse) private var dailyActions: [DailyAction]
+    @State private var showingResetConfirmation = false
+    
+    private var todaysActions: [DailyAction] {
+        dailyActions.filter { Calendar.current.isDateInToday($0.date) }
+    }
     
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
                 // Reset Data Button
                 Button(action: {
-                    // TODO: Implement reset data functionality
-                    print("Reset data tapped")
+                    showingResetConfirmation = true
                 }) {
                     HStack {
                         Image(systemName: "arrow.clockwise")
                             .font(.title2)
-                        Text("Reset Data")
+                        Text("Reset Today's Actions")
                             .font(.title3)
                             .fontWeight(.medium)
                         Spacer()
@@ -58,6 +65,7 @@ struct SettingsView: View {
                     .background(Color.red.opacity(0.1))
                     .cornerRadius(12)
                 }
+                .disabled(todaysActions.isEmpty)
                 
                 // Support Button
                 Button(action: {
@@ -94,6 +102,22 @@ struct SettingsView: View {
                 }
             }
         }
+        .alert("Reset Today's Actions", isPresented: $showingResetConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset", role: .destructive) {
+                resetTodaysActions()
+            }
+        } message: {
+            Text("This will delete all of today's actions and their progress. This action cannot be undone.")
+        }
+    }
+    
+    private func resetTodaysActions() {
+        for action in todaysActions {
+            modelContext.delete(action)
+        }
+        try? modelContext.save()
+        dismiss()
     }
 }
 

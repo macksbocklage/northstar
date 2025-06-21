@@ -17,6 +17,8 @@ struct HomeView: View {
     @State private var streakCount = 5
     @State private var showingSetDailyActions = false
     @State private var showingLogToday = false
+    @State private var showingEditDailyActions = false
+    @State private var showingEditNorthStar = false
     
     private var todaysActions: [DailyAction] {
         dailyActions.filter { Calendar.current.isDateInToday($0.date) }
@@ -43,10 +45,9 @@ struct HomeView: View {
                                 .bold()
                                 .foregroundColor(.white)
                             
-                            Text("Thursday, June 19th, 2025")
+                            Text("\(Date().formatted(date: .complete, time: .omitted))")
                                 .foregroundColor(.gray)
                         }
-                        
                         Spacer()
                         
                         HStack(spacing: 4) {
@@ -59,34 +60,46 @@ struct HomeView: View {
                     .padding()
                     
                     // Excellence Card
-                    VStack(spacing: 16) {
-                        Image(systemName: "sparkles")
-                            .font(.largeTitle)
-                            .foregroundColor(.white)
-                        
-                        Text(northStarStatement)
-                            .font(.title2)
-                            .bold()
-                            .foregroundColor(.white)
+                    Button(action: {
+                        showingEditNorthStar = true
+                    }) {
+                        VStack(spacing: 16) {
+                            Image("logo")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 60, height: 60)
+                                .foregroundColor(.white)
+                            
+                            Text(northStarStatement)
+                                .font(.title2)
+                                .bold()
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color.black)
+                                .stroke(Color.gray, lineWidth: 1)
+                        )
+                        .padding(.horizontal)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color.black)
-                            .stroke(Color.gray, lineWidth: 1)
-                    )
-                    .padding(.horizontal)
+                    .buttonStyle(PlainButtonStyle())
                     
                     // Choose Daily 3 Button
                     Button(action: {
                         if actionsAreSet {
-                            showingLogToday = true
+                            if hasBeenLoggedToday {
+                                showingEditDailyActions = true
+                            } else {
+                                showingLogToday = true
+                            }
                         } else {
                             showingSetDailyActions = true
                         }
                     }) {
-                        Text(actionsAreSet ? (hasBeenLoggedToday ? "Edit Today's Log" : "Log Today") : "Set Daily Actions")
+                        Text(actionsAreSet ? (hasBeenLoggedToday ? "Edit Today's Actions" : "Log Today") : "Set Daily Actions")
                             .font(.headline)
                             .foregroundColor(.black)
                             .padding()
@@ -110,7 +123,9 @@ struct HomeView: View {
                             
                             VStack(spacing: 12) {
                                 ForEach(todaysActions) { action in
-                                    ActionCard(action: action)
+                                    ActionCard(action: action) {
+                                        showingEditDailyActions = true
+                                    }
                                 }
                             }
                             .padding(.horizontal)
@@ -126,11 +141,23 @@ struct HomeView: View {
         .sheet(isPresented: $showingLogToday) {
             LogTodayView(actions: todaysActions)
         }
+        .sheet(isPresented: $showingEditDailyActions) {
+            EditDailyActionsView(actions: todaysActions)
+        }
+        .sheet(isPresented: $showingEditNorthStar) {
+            EditNorthStarView(northStarStatement: $northStarStatement)
+        }
     }
 }
 
 struct ActionCard: View {
     let action: DailyAction
+    let onEdit: (() -> Void)?
+
+    init(action: DailyAction, onEdit: (() -> Void)? = nil) {
+        self.action = action
+        self.onEdit = onEdit
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -154,6 +181,9 @@ struct ActionCard: View {
                 .fill(Color.black)
                 .stroke(Color.gray, lineWidth: 1)
         )
+        .onLongPressGesture {
+            onEdit?()
+        }
     }
 }
 
