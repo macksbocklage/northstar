@@ -17,14 +17,10 @@ struct HistoryLogView: View {
                     .bold()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
+                    .padding(.top)
                 
-                DatePicker(
-                    "Select Date",
-                    selection: $selectedDate,
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.graphical)
-                .padding(.horizontal)
+                CustomCalendarView(selectedDate: $selectedDate, dailyActions: dailyActions)
+                    .padding(.horizontal)
                 
                 if actionsForSelectedDate.isEmpty {
                     VStack {

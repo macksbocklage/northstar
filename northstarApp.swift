@@ -19,6 +19,7 @@ struct northstarApp: App {
             Pillar.self,
             SubGoal.self,
             DailyAction.self,
+            WeeklyReview.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

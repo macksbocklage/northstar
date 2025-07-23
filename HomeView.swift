@@ -14,11 +14,27 @@ struct HomeView: View {
     @Query(sort: \DailyAction.date, order: .reverse) private var dailyActions: [DailyAction]
     
     @AppStorage("northStarStatement") private var northStarStatement = "Excellence in all areas."
-    @State private var streakCount = 5
     @State private var showingSetDailyActions = false
     @State private var showingLogToday = false
-    @State private var showingEditDailyActions = false
     @State private var showingEditNorthStar = false
+    @State private var editingAction: DailyAction? = nil
+    @State private var currentQuoteIndex = 0
+    
+    private let motivationalQuotes = [
+        "Align actions with ambition.",
+        "Execute the mission.",
+        "Intensity is the price of excellence.",
+        "Win the day.",
+        "Focus on the signal, ignore the noise.",
+        "Discipline equals freedom.",
+        "Today's actions shape tomorrow's reality.",
+        "What is the highest leverage action now?",
+        "Commitment unlocks potential.",
+        "Are your actions moving you closer?",
+        "Obsession + Clarity = Unstoppable.",
+        "Progress demands persistence.",
+        "What will you accomplish today?"
+    ]
     
     private var todaysActions: [DailyAction] {
         dailyActions.filter { Calendar.current.isDateInToday($0.date) }
@@ -33,6 +49,37 @@ struct HomeView: View {
         return todaysActions.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
     }
     
+    private var currentStreak: Int {
+        let calendar = Calendar.current
+        let today = Date()
+        var streak = 0
+        var currentDate = today
+        
+        // Check if today has been logged
+        let todayActions = dailyActions.filter { calendar.isDate($0.date, inSameDayAs: today) }
+        let todayLogged = todayActions.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+        
+        if todayLogged {
+            streak = 1
+            currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
+        }
+        
+        // Count backwards through consecutive days
+        while true {
+            let actionsForDate = dailyActions.filter { calendar.isDate($0.date, inSameDayAs: currentDate) }
+            let hasLoggedActions = actionsForDate.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+            
+            if hasLoggedActions {
+                streak += 1
+                currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
+            } else {
+                break
+            }
+        }
+        
+        return streak
+    }
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -40,7 +87,7 @@ struct HomeView: View {
                     // Header
                     HStack {
                         VStack(alignment: .leading) {
-                            Text("Welcome back, Max")
+                            Text("Home")
                                 .font(.largeTitle)
                                 .bold()
                                 .foregroundColor(.white)
@@ -53,7 +100,7 @@ struct HomeView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "flame.fill")
                                 .foregroundColor(.orange)
-                            Text("\(streakCount)")
+                            Text("\(currentStreak)")
                                 .bold()
                         }
                     }
@@ -90,16 +137,12 @@ struct HomeView: View {
                     // Choose Daily 3 Button
                     Button(action: {
                         if actionsAreSet {
-                            if hasBeenLoggedToday {
-                                showingEditDailyActions = true
-                            } else {
-                                showingLogToday = true
-                            }
+                            showingLogToday = true
                         } else {
                             showingSetDailyActions = true
                         }
                     }) {
-                        Text(actionsAreSet ? (hasBeenLoggedToday ? "Edit Today's Actions" : "Log Today") : "Set Daily Actions")
+                        Text(actionsAreSet ? "Log Today's Actions" : "Set Daily Actions")
                             .font(.headline)
                             .foregroundColor(.black)
                             .padding()
@@ -112,7 +155,42 @@ struct HomeView: View {
                     }
                     .padding(.horizontal)
                     
-                    // Todays's Actions Section
+                    // Motivational Quotes Section
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            currentQuoteIndex = (currentQuoteIndex + 1) % motivationalQuotes.count
+                        }
+                    }) {
+                        VStack(spacing: 12) {
+                            Image(systemName: "quote.opening")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                            
+                            Text(motivationalQuotes[currentQuoteIndex])
+                                .font(.title3)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(4)
+                            
+                            Text("Tap for another")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                                .opacity(0.7)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                        .padding(.horizontal, 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.black)
+                                .stroke(Color.gray, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal)
+                    
+                    // Today's Actions Section
                     if actionsAreSet {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Today's Actions")
@@ -123,9 +201,10 @@ struct HomeView: View {
                             
                             VStack(spacing: 12) {
                                 ForEach(todaysActions) { action in
-                                    ActionCard(action: action) {
-                                        showingEditDailyActions = true
-                                    }
+                                    ActionCard(action: action)
+                                        .onTapGesture {
+                                            editingAction = action
+                                        }
                                 }
                             }
                             .padding(.horizontal)
@@ -141,23 +220,21 @@ struct HomeView: View {
         .sheet(isPresented: $showingLogToday) {
             LogTodayView(actions: todaysActions)
         }
-        .sheet(isPresented: $showingEditDailyActions) {
-            EditDailyActionsView(actions: todaysActions)
-        }
         .sheet(isPresented: $showingEditNorthStar) {
             EditNorthStarView(northStarStatement: $northStarStatement)
+        }
+        .sheet(item: $editingAction) { action in
+            EditDailyActionsView(actions: [action])
+        }
+        .onAppear {
+            // Randomize initial quote
+            currentQuoteIndex = Int.random(in: 0..<motivationalQuotes.count)
         }
     }
 }
 
 struct ActionCard: View {
     let action: DailyAction
-    let onEdit: (() -> Void)?
-
-    init(action: DailyAction, onEdit: (() -> Void)? = nil) {
-        self.action = action
-        self.onEdit = onEdit
-    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -181,9 +258,6 @@ struct ActionCard: View {
                 .fill(Color.black)
                 .stroke(Color.gray, lineWidth: 1)
         )
-        .onLongPressGesture {
-            onEdit?()
-        }
     }
 }
 
