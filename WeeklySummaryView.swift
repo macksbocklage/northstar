@@ -103,8 +103,7 @@ struct WeeklyReviewSummaryCard: View {
                         PillarSummaryRow(
                             pillar: pillars[index],
                             rating: review.pillarRatings[index],
-                            reflection: index < review.pillarReflections.count ? review.pillarReflections[index] : "",
-                            nextWeekFocus: index < review.nextWeekFocus.count ? review.nextWeekFocus[index] : ""
+                            reflection: index < review.pillarReflections.count ? review.pillarReflections[index] : ""
                         )
                     }
                 }
@@ -123,7 +122,6 @@ struct PillarSummaryRow: View {
     let pillar: Pillar
     let rating: Int
     let reflection: String
-    let nextWeekFocus: String
     
     @State private var isExpanded = false
     
@@ -163,29 +161,14 @@ struct PillarSummaryRow: View {
             .buttonStyle(PlainButtonStyle())
             
             // Expanded content
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
-                    if !reflection.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Reflection")
-                                .font(.caption.bold())
-                                .foregroundColor(.secondary)
-                            Text(reflection)
-                                .font(.caption)
-                                .foregroundColor(.white)
-                        }
-                    }
-                    
-                    if !nextWeekFocus.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Focus Area")
-                                .font(.caption.bold())
-                                .foregroundColor(.secondary)
-                            Text(nextWeekFocus)
-                                .font(.caption)
-                                .foregroundColor(.white)
-                        }
-                    }
+            if isExpanded && !reflection.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Reflection")
+                        .font(.caption.bold())
+                        .foregroundColor(.secondary)
+                    Text(reflection)
+                        .font(.caption)
+                        .foregroundColor(.white)
                 }
                 .padding(.leading, 8)
                 .transition(.opacity.combined(with: .slide))

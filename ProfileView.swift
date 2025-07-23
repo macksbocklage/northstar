@@ -18,8 +18,6 @@ struct ProfileView: View {
     @State private var showingResetConfirmation = false
     @State private var showingSettings = false
     @State private var showingImagePicker = false
-    @State private var showingWeeklyReview = false
-    @State private var showingWeeklySummary = false
     @State private var isEditMode = false
     @State private var statCardOrder: [StatCardType] = [.currentStreak, .longestStreak, .daysLogged, .monthCompletion, .productiveDay]
     @State private var draggedItem: StatCardType?
@@ -29,18 +27,24 @@ struct ProfileView: View {
         dailyActions.filter { Calendar.current.isDateInToday($0.date) }
     }
     
-    private var shouldShowWeeklyReview: Bool {
+    private var isWeeklyReviewAvailable: Bool {
         let calendar = Calendar.current
         let today = Date()
-        let weekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        return calendar.component(.weekday, from: today) == 1 // Sunday is 1
+    }
+    
+    private var daysUntilWeeklyReview: Int {
+        let calendar = Calendar.current
+        let today = Date()
+        let currentWeekday = calendar.component(.weekday, from: today)
         
-        // Show weekly review on Sundays or if no review exists for current week
-        let isSunday = calendar.component(.weekday, from: today) == 1
-        let hasCurrentWeekReview = weeklyReviews.contains { review in
-            calendar.isDate(review.weekStart, equalTo: weekStart, toGranularity: .day)
+        // If today is Sunday (1), return 7 for next Sunday
+        // Otherwise calculate days until next Sunday
+        if currentWeekday == 1 {
+            return 7
+        } else {
+            return 8 - currentWeekday // Days until next Sunday
         }
-        
-        return isSunday && !hasCurrentWeekReview
     }
     
     private var currentStreak: Int {
@@ -238,41 +242,6 @@ struct ProfileView: View {
                     }
                     .padding(.top, 8)
                     
-                    // Weekly Review Alert
-                    if shouldShowWeeklyReview {
-                        VStack(spacing: 12) {
-                            HStack {
-                                Image(systemName: "calendar.badge.checkmark")
-                                    .foregroundColor(.blue)
-                                Text("Time for your weekly review")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                Spacer()
-                            }
-                            
-                            Button(action: {
-                                showingWeeklyReview = true
-                            }) {
-                                Text("Start Weekly Review")
-                                    .font(.headline)
-                                    .foregroundColor(.black)
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color.blue)
-                                    )
-                            }
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 15)
-                                .fill(Color.blue.opacity(0.1))
-                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                        )
-                        .padding(.horizontal)
-                    }
-                    
                     // Statistics
                     VStack(spacing: 16) {
                         HStack {
@@ -362,37 +331,58 @@ struct ProfileView: View {
                             
                             VStack(spacing: 12) {
                                 // Weekly Review Button
-                                Button(action: {
-                                    if !weeklyReviews.isEmpty {
-                                        showingWeeklySummary = true
-                                    } else {
-                                        showingWeeklyReview = true
+                                if isWeeklyReviewAvailable {
+                                    NavigationLink(destination: WeeklyReviewView()) {
+                                        HStack {
+                                            Image(systemName: "calendar.badge.checkmark")
+                                                .font(.title2)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(weeklyReviews.isEmpty ? "Start Weekly Review" : "View Weekly Summary")
+                                                    .font(.headline)
+                                                Text(weeklyReviews.isEmpty ? "Reflect on your pillar progress" : "See your latest weekly insights")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 15)
+                                                .fill(Color.black)
+                                                .stroke(Color.gray, lineWidth: 1)
+                                        )
                                     }
-                                }) {
+                                    .padding(.horizontal)
+                                } else {
                                     HStack {
                                         Image(systemName: "calendar.badge.checkmark")
                                             .font(.title2)
+                                            .foregroundColor(.gray)
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(weeklyReviews.isEmpty ? "Start Weekly Review" : "View Weekly Summary")
+                                            Text("Weekly Review")
                                                 .font(.headline)
-                                            Text(weeklyReviews.isEmpty ? "Reflect on your pillar progress" : "See your latest weekly insights")
+                                                .foregroundColor(.gray)
+                                            Text("\(daysUntilWeeklyReview) days until next review")
                                                 .font(.caption)
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(.gray)
                                         }
                                         Spacer()
-                                        Image(systemName: "chevron.right")
+                                        Image(systemName: "lock.fill")
                                             .font(.caption)
                                             .foregroundColor(.gray)
                                     }
-                                    .foregroundColor(.white)
                                     .padding()
                                     .background(
                                         RoundedRectangle(cornerRadius: 15)
                                             .fill(Color.black)
-                                            .stroke(Color.gray, lineWidth: 1)
+                                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                                     )
+                                    .padding(.horizontal)
                                 }
-                                .padding(.horizontal)
                                 
                                 // Sample Data Section (for testing)
                                 VStack(spacing: 8) {
@@ -536,12 +526,6 @@ struct ProfileView: View {
             SettingsView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-        }
-        .sheet(isPresented: $showingWeeklyReview) {
-            WeeklyReviewView()
-        }
-        .sheet(isPresented: $showingWeeklySummary) {
-            WeeklySummaryView(weeklyReviews: weeklyReviews)
         }
         .sheet(isPresented: $showingImagePicker) {
             ImagePickerView(onImageSelected: { image in

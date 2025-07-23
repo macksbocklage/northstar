@@ -10,7 +10,6 @@ struct WeeklyReviewView: View {
     @State private var currentIndex: Int = 0
     @State private var pillarReflections: [String] = []
     @State private var pillarRatings: [Int] = []
-    @State private var nextWeekFocus: [String] = []
     @FocusState private var isTextFieldFocused: Bool
     
     private var weekStart: Date {
@@ -24,98 +23,155 @@ struct WeeklyReviewView: View {
         return calendar.date(byAdding: .day, value: 6, to: weekStart) ?? Date()
     }
     
+    private var weekDateRange: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        let startString = formatter.string(from: weekStart)
+        let endString = formatter.string(from: weekEnd)
+        return "\(startString) - \(endString)"
+    }
+    
     init() {
         // Initialize arrays based on pillar count
     }
     
     var body: some View {
-        NavigationView {
-            VStack {
-                if pillars.isEmpty {
-                    Text("No pillars found.")
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    TabView(selection: $currentIndex) {
-                        ForEach(pillars.indices, id: \.self) { index in
-                            WeeklyReviewCard(
-                                pillar: pillars[index],
-                                weekStats: getWeekStats(for: pillars[index]),
-                                reflection: Binding(
-                                    get: { pillarReflections.indices.contains(index) ? pillarReflections[index] : "" },
-                                    set: { newValue in
-                                        if pillarReflections.indices.contains(index) {
-                                            pillarReflections[index] = newValue
-                                        }
-                                    }
-                                ),
-                                rating: Binding(
-                                    get: { pillarRatings.indices.contains(index) ? pillarRatings[index] : 0 },
-                                    set: { newValue in
-                                        if pillarRatings.indices.contains(index) {
-                                            pillarRatings[index] = newValue
-                                        }
-                                    }
-                                ),
-                                nextWeekFocus: Binding(
-                                    get: { nextWeekFocus.indices.contains(index) ? nextWeekFocus[index] : "" },
-                                    set: { newValue in
-                                        if nextWeekFocus.indices.contains(index) {
-                                            nextWeekFocus[index] = newValue
-                                        }
-                                    }
-                                ),
-                                isTextFieldFocused: $isTextFieldFocused
-                            )
-                            .tag(index)
-                        }
-                    }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 8) {
+                Text("Weekly Review")
+                    .font(.title.bold())
+                    .foregroundColor(.white)
+                
+                Text(weekDateRange)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 20)
+            .padding(.bottom, 24)
+            
+            if pillars.isEmpty {
+                VStack(spacing: 20) {
+                    Image(systemName: "building.columns")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray)
                     
+                    Text("No pillars found")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                // Main content
+                TabView(selection: $currentIndex) {
+                    ForEach(pillars.indices, id: \.self) { index in
+                        WeeklyReviewCard(
+                            pillar: pillars[index],
+                            weekStats: getWeekStats(for: pillars[index]),
+                            reflection: Binding(
+                                get: { pillarReflections.indices.contains(index) ? pillarReflections[index] : "" },
+                                set: { newValue in
+                                    if pillarReflections.indices.contains(index) {
+                                        pillarReflections[index] = newValue
+                                    }
+                                }
+                            ),
+                            rating: Binding(
+                                get: { pillarRatings.indices.contains(index) ? pillarRatings[index] : 0 },
+                                set: { newValue in
+                                    if pillarRatings.indices.contains(index) {
+                                        pillarRatings[index] = newValue
+                                    }
+                                }
+                            ),
+                            isTextFieldFocused: $isTextFieldFocused
+                        )
+                        .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                
+                // Bottom section with progress and navigation
+                VStack(spacing: 20) {
                     // Progress indicators
                     HStack(spacing: 8) {
                         ForEach(pillars.indices, id: \.self) { index in
                             Circle()
-                                .fill(currentIndex == index ? Color.white : Color.gray)
+                                .fill(currentIndex == index ? Color.white : Color.gray.opacity(0.4))
                                 .frame(width: 8, height: 8)
+                                .scaleEffect(currentIndex == index ? 1.2 : 1.0)
+                                .animation(.easeInOut(duration: 0.2), value: currentIndex)
                         }
                     }
-                    .padding(.bottom, 20)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black.edgesIgnoringSafeArea(.all))
-            .navigationTitle("Weekly Review")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if currentIndex > 0 {
-                        Button {
-                            withAnimation { currentIndex -= 1 }
-                        } label: {
-                            Image(systemName: "chevron.left")
-                            Text("Back")
+                    
+                    // Navigation buttons
+                    HStack(spacing: 16) {
+                        if currentIndex > 0 {
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    currentIndex -= 1
+                                }
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "chevron.left")
+                                        .font(.caption.bold())
+                                    Text("Back")
+                                        .font(.headline)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 25)
+                                        .fill(Color.gray.opacity(0.2))
+                                )
+                            }
+                        } else {
+                            Spacer()
                         }
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            if currentIndex < pillars.count - 1 {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    currentIndex += 1
+                                }
+                            } else {
+                                saveWeeklyReview()
+                                dismiss()
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Text(currentIndex < pillars.count - 1 ? "Next" : "Complete")
+                                    .font(.headline.bold())
+                                if currentIndex < pillars.count - 1 {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.bold())
+                                } else {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.bold())
+                                }
+                            }
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 25)
+                                    .fill(allReviewsCompleted || currentIndex < pillars.count - 1 ? Color.white : Color.gray.opacity(0.3))
+                            )
+                        }
+                        .disabled(!allReviewsCompleted && currentIndex >= pillars.count - 1)
                     }
+                    .padding(.horizontal, 20)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if currentIndex < pillars.count - 1 {
-                        Button {
-                            withAnimation { currentIndex += 1 }
-                        } label: {
-                            Text("Next")
-                            Image(systemName: "chevron.right")
-                        }
-                    } else {
-                        Button("Complete") {
-                            saveWeeklyReview()
-                            dismiss()
-                        }
-                        .disabled(!allReviewsCompleted)
-                    }
-                }
+                .padding(.bottom, 30)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.edgesIgnoringSafeArea(.all))
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(false)
         .colorScheme(.dark)
         .onAppear {
             initializeArrays()
@@ -126,7 +182,6 @@ struct WeeklyReviewView: View {
         if pillarReflections.isEmpty {
             pillarReflections = Array(repeating: "", count: pillars.count)
             pillarRatings = Array(repeating: 0, count: pillars.count)
-            nextWeekFocus = Array(repeating: "", count: pillars.count)
         }
     }
     
@@ -171,11 +226,35 @@ struct WeeklyReviewView: View {
             weekStart: weekStart,
             weekEnd: weekEnd,
             pillarReflections: pillarReflections,
-            pillarRatings: pillarRatings,
-            nextWeekFocus: nextWeekFocus
+            pillarRatings: pillarRatings
         )
         
         modelContext.insert(weeklyReview)
+        
+        // Create DailyAction entries for each pillar's weekly review
+        let today = Date()
+        for (index, pillar) in pillars.enumerated() {
+            if index < pillarRatings.count && pillarRatings[index] > 0 {
+                let ratingText = String(repeating: "⭐", count: pillarRatings[index])
+                let reflection = index < pillarReflections.count ? pillarReflections[index] : ""
+                
+                var actionTitle = "Weekly Review: \(ratingText)"
+                if !reflection.isEmpty {
+                    actionTitle += " - \(reflection)"
+                }
+                
+                let reviewAction = DailyAction(
+                    title: actionTitle,
+                    date: today,
+                    pillar: pillar
+                )
+                reviewAction.isCompleted = true
+                reviewAction.notes = "Weekly pillar review completed"
+                
+                modelContext.insert(reviewAction)
+            }
+        }
+        
         try? modelContext.save()
     }
 }
@@ -185,53 +264,77 @@ struct WeeklyReviewCard: View {
     let weekStats: WeeklyPillarStats
     @Binding var reflection: String
     @Binding var rating: Int
-    @Binding var nextWeekFocus: String
     @FocusState.Binding var isTextFieldFocused: Bool
     
     var body: some View {
         ScrollView {
             VStack(spacing: 32) {
                 // Pillar Header
-                VStack(spacing: 20) {
-                    HStack(spacing: 16) {
+                VStack(spacing: 24) {
+                    HStack(spacing: 20) {
                         ZStack {
                             Circle()
-                                .fill(Color.gray.opacity(0.15))
-                                .frame(width: 80, height: 80)
+                                .fill(Color.white.opacity(0.1))
+                                .frame(width: 70, height: 70)
                             Text(pillar.emoji ?? "⭐️")
-                                .font(.system(size: 40))
+                                .font(.system(size: 32))
                         }
-                        VStack(alignment: .leading, spacing: 4) {
+                        
+                        VStack(alignment: .leading, spacing: 6) {
                             Text(pillar.title)
                                 .font(.title.bold())
                                 .foregroundColor(.white)
-                            Text("Weekly Review")
+                            Text("How did this week go?")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
+                        
+                        Spacer()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     
-                    // Week Stats
-                    VStack(spacing: 12) {
+                    // Week Stats Card
+                    VStack(spacing: 16) {
                         HStack {
-                            Text("This Week's Progress")
-                                .font(.headline)
+                            Text("This Week")
+                                .font(.headline.bold())
                                 .foregroundColor(.white)
                             Spacer()
                         }
                         
-                        HStack(spacing: 20) {
-                            StatItem(title: "Actions", value: "\(weekStats.totalActions)")
-                            StatItem(title: "Completed", value: "\(weekStats.completedActions)")
-                            StatItem(title: "Last Action", value: weekStats.daysSinceLastAction == 0 ? "Today" : "\(weekStats.daysSinceLastAction)d ago")
+                        HStack(spacing: 0) {
+                            StatItem(
+                                title: "Actions",
+                                value: "\(weekStats.totalActions)",
+                                color: .blue
+                            )
+                            
+                            Divider()
+                                .frame(height: 40)
+                                .background(Color.gray.opacity(0.3))
+                            
+                            StatItem(
+                                title: "Completed",
+                                value: "\(weekStats.completedActions)",
+                                color: .green
+                            )
+                            
+                            Divider()
+                                .frame(height: 40)
+                                .background(Color.gray.opacity(0.3))
+                            
+                            StatItem(
+                                title: "Last Action",
+                                value: weekStats.daysSinceLastAction == 0 ? "Today" : "\(weekStats.daysSinceLastAction)d ago",
+                                color: weekStats.daysSinceLastAction > 3 ? .orange : .gray
+                            )
                         }
                         
                         if weekStats.daysSinceLastAction > 3 {
-                            HStack {
+                            HStack(spacing: 8) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.orange)
-                                Text("This pillar needs attention")
+                                    .font(.caption)
+                                Text("This pillar could use some attention")
                                     .font(.caption)
                                     .foregroundColor(.orange)
                                 Spacer()
@@ -239,87 +342,106 @@ struct WeeklyReviewCard: View {
                             .padding(.top, 8)
                         }
                     }
-                    .padding()
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(12)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white.opacity(0.05))
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
                 }
                 
-                // Rating
-                VStack(spacing: 16) {
-                    HStack {
-                        Text("How did this pillar serve you this week?")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        Spacer()
+                // Rating Section
+                VStack(spacing: 20) {
+                    VStack(spacing: 12) {
+                        HStack {
+                            Text("How did this pillar serve you?")
+                                .font(.headline.bold())
+                                .foregroundColor(.white)
+                            Spacer()
+                        }
+                        
+                        HStack {
+                            Text("Rate your week")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
                     }
                     
-                    HStack(spacing: 12) {
+                    HStack(spacing: 16) {
                         ForEach(1...5, id: \.self) { star in
                             Button(action: {
-                                rating = star
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    rating = star
+                                }
                             }) {
                                 Image(systemName: star <= rating ? "star.fill" : "star")
-                                    .font(.title2)
-                                    .foregroundColor(star <= rating ? .yellow : .gray)
+                                    .font(.title)
+                                    .foregroundColor(star <= rating ? .yellow : .gray.opacity(0.4))
+                                    .scaleEffect(star <= rating ? 1.1 : 1.0)
                             }
                         }
                         Spacer()
                     }
                 }
                 
-                // Reflection
-                VStack(spacing: 16) {
-                    HStack {
-                        Text("What did you learn about yourself?")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        Spacer()
+                // Reflection Section
+                VStack(spacing: 20) {
+                    VStack(spacing: 12) {
+                        HStack {
+                            Text("Reflection")
+                                .font(.headline.bold())
+                                .foregroundColor(.white)
+                            Spacer()
+                        }
+                        
+                        HStack {
+                            Text("What did you learn about yourself?")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
                     }
                     
-                    TextField("Reflect on your growth, challenges, or insights...", text: $reflection, axis: .vertical)
-                        .padding()
-                        .background(Color.gray.opacity(0.2))
-                        .cornerRadius(12)
-                        .lineLimit(3...6)
+                    TextField("Share your insights, challenges, or breakthroughs...", text: $reflection)
+                        .font(.body)
+                        .foregroundColor(.white)
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white.opacity(0.05))
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
                         .focused($isTextFieldFocused)
+                        .onSubmit {
+                            isTextFieldFocused = false
+                        }
                 }
                 
-                // Next Week Focus
-                VStack(spacing: 16) {
-                    HStack {
-                        Text("What's your focus for next week?")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        Spacer()
-                    }
-                    
-                    TextField("One key area to focus on...", text: $nextWeekFocus)
-                        .padding()
-                        .background(Color.gray.opacity(0.2))
-                        .cornerRadius(12)
-                        .focused($isTextFieldFocused)
-                }
-                
-                Spacer(minLength: 50)
+                Spacer(minLength: 60)
             }
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
         }
-        .padding(.horizontal, 20)
     }
 }
 
 struct StatItem: View {
     let title: String
     let value: String
+    let color: Color
     
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 8) {
             Text(value)
                 .font(.title2.bold())
-                .foregroundColor(.white)
+                .foregroundColor(color)
             Text(title)
-                .font(.caption)
+                .font(.caption.weight(.medium))
                 .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -337,16 +459,14 @@ final class WeeklyReview: Identifiable {
     var weekEnd: Date
     var pillarReflections: [String]
     var pillarRatings: [Int]
-    var nextWeekFocus: [String]
     var createdAt: Date
     
-    init(weekStart: Date, weekEnd: Date, pillarReflections: [String], pillarRatings: [Int], nextWeekFocus: [String]) {
+    init(weekStart: Date, weekEnd: Date, pillarReflections: [String], pillarRatings: [Int]) {
         self.id = UUID()
         self.weekStart = weekStart
         self.weekEnd = weekEnd
         self.pillarReflections = pillarReflections
         self.pillarRatings = pillarRatings
-        self.nextWeekFocus = nextWeekFocus
         self.createdAt = Date()
     }
 }
