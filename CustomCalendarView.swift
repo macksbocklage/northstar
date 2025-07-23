@@ -10,27 +10,27 @@ struct CustomCalendarView: View {
     private let daysInWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     
     var body: some View {
-        VStack(spacing: 28) {
+        VStack(spacing: 20) {
             // Month navigation
             HStack {
                 Button(action: previousMonth) {
                     Image(systemName: "chevron.left")
                         .foregroundColor(.white)
-                        .padding(8)
+                        .padding(6)
                 }
                 Spacer()
                 Text(currentMonth.formatted(.dateTime.month(.wide).year()))
-                    .font(.title2.bold())
+                    .font(.title3.bold())
                     .foregroundColor(.white)
                 Spacer()
                 Button(action: nextMonth) {
                     Image(systemName: "chevron.right")
                         .foregroundColor(.white)
-                        .padding(8)
+                        .padding(6)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 8)
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
 
             // Day headers
             HStack(spacing: 0) {
@@ -41,10 +41,10 @@ struct CustomCalendarView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 8)
 
             // Calendar grid
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 16) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 12) {
                 ForEach(daysInMonth, id: \.self) { date in
                     if let date = date {
                         DayCell(
@@ -62,7 +62,7 @@ struct CustomCalendarView: View {
                 }
             }
             .padding(.horizontal, 6)
-            .padding(.bottom, 8)
+            .padding(.bottom, 4)
         }
     }
     
