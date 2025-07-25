@@ -248,7 +248,7 @@ struct WeeklyReviewView: View {
                     date: today,
                     pillar: pillar
                 )
-                reviewAction.isCompleted = true
+                reviewAction.actionStatus = .completed
                 reviewAction.notes = "Weekly pillar review completed"
                 
                 modelContext.insert(reviewAction)

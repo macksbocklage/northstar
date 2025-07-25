@@ -55,7 +55,7 @@ struct ProfileView: View {
         
         // Check if today has been logged
         let todayActions = dailyActions.filter { calendar.isDate($0.date, inSameDayAs: today) }
-        let todayLogged = todayActions.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+        let todayLogged = todayActions.contains { $0.isLogged }
         
         if todayLogged {
             streak = 1
@@ -65,7 +65,7 @@ struct ProfileView: View {
         // Count backwards through consecutive days
         while true {
             let actionsForDate = dailyActions.filter { calendar.isDate($0.date, inSameDayAs: currentDate) }
-            let hasLoggedActions = actionsForDate.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+            let hasLoggedActions = actionsForDate.contains { $0.isLogged }
             
             if hasLoggedActions {
                 streak += 1
@@ -95,7 +95,7 @@ struct ProfileView: View {
         
         for date in sortedDates {
             let actionsForDate = dateGroups[date] ?? []
-            let hasLoggedActions = actionsForDate.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+            let hasLoggedActions = actionsForDate.contains { $0.isLogged }
             
             if hasLoggedActions {
                 if let lastDate = lastDate,
@@ -121,7 +121,7 @@ struct ProfileView: View {
         }
         
         return dateGroups.values.compactMap { actions in
-            actions.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) } ? 1 : nil
+            actions.contains { $0.isLogged } ? 1 : nil
         }.count
     }
     
@@ -134,7 +134,7 @@ struct ProfileView: View {
         var weekdayCompletions: [Int: Int] = [:]
         
         for (weekday, actions) in weekdayGroups {
-            let completedCount = actions.filter { $0.isCompleted }.count
+            let completedCount = actions.filter { $0.actionStatus == .completed }.count
             weekdayCompletions[weekday] = (weekdayCompletions[weekday] ?? 0) + completedCount
         }
         

@@ -20,10 +20,6 @@ struct PillarsView: View {
                                 .font(.largeTitle)
                                 .bold()
                                 .foregroundColor(.white)
-                            
-                            Text("Your core identity-defining goals")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
                         }
                         Spacer()
                     }
@@ -95,24 +91,20 @@ struct PillarBalanceView: View {
             HStack(spacing: 12) {
                 ForEach(pillars) { pillar in
                     let pillarActions = thisWeekActions.filter { $0.pillar?.id == pillar.id }
-                    let completedActions = pillarActions.filter { $0.isCompleted }
+                    let loggedActions = pillarActions.filter { $0.isLogged }
+                    let completedActions = pillarActions.filter { $0.actionStatus == .completed }
                     
                     VStack(spacing: 8) {
                         Text(pillar.emoji ?? "⭐️")
                             .font(.title2)
                         
-                        Text("\(completedActions.count)")
+                        Text("\(completedActions.count)/\(loggedActions.count)")
                             .font(.title3.bold())
                             .foregroundColor(.white)
-                        
-                        Text(pillar.title)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                        
+
                         // Progress indicator
                         Circle()
-                            .fill(completedActions.count > 0 ? Color.green : Color.gray.opacity(0.3))
+                            .fill(loggedActions.count > 0 ? Color.green : Color.gray.opacity(0.3))
                             .frame(width: 8, height: 8)
                     }
                     .frame(maxWidth: .infinity)
@@ -151,7 +143,7 @@ struct EnhancedPillarCard: View {
         
         // Check if today has been logged for this pillar
         let todayActions = pillarActions.filter { calendar.isDate($0.date, inSameDayAs: today) }
-        let todayLogged = todayActions.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+        let todayLogged = todayActions.contains { $0.isLogged }
         
         if todayLogged {
             streak = 1
@@ -161,7 +153,7 @@ struct EnhancedPillarCard: View {
         // Count backwards through consecutive days
         while true {
             let actionsForDate = pillarActions.filter { calendar.isDate($0.date, inSameDayAs: currentDate) }
-            let hasLoggedActions = actionsForDate.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+            let hasLoggedActions = actionsForDate.contains { $0.isLogged }
             
             if hasLoggedActions {
                 streak += 1
@@ -182,10 +174,11 @@ struct EnhancedPillarCard: View {
         let calendar = Calendar.current
         let now = Date()
         let weekActions = pillarActions.filter { calendar.isDate($0.date, equalTo: now, toGranularity: .weekOfYear) }
-        let completedActions = weekActions.filter { $0.isCompleted }
+        let loggedActions = weekActions.filter { $0.isLogged }
+        let completedActions = weekActions.filter { $0.actionStatus == .completed }
         
-        guard !weekActions.isEmpty else { return 0 }
-        return Double(completedActions.count) / Double(weekActions.count)
+        guard !loggedActions.isEmpty else { return 0 }
+        return Double(completedActions.count) / Double(loggedActions.count)
     }
     
     private var hasActionToday: Bool {

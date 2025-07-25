@@ -33,7 +33,8 @@ struct SampleDataGenerator {
         
         // Higher chance of completion for more recent days
         let completionChance = dayOffset < 3 ? 0.8 : 0.6
-        action.isCompleted = Double.random(in: 0...1) < completionChance
+        let isCompleted = Double.random(in: 0...1) < completionChance
+        action.actionStatus = isCompleted ? .completed : .incomplete
         
         // Add notes sometimes
         if Double.random(in: 0...1) < 0.3 {

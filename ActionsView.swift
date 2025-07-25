@@ -334,7 +334,7 @@ struct LogTodayView: View {
                                     }
                                     
                                     HStack(spacing: 24) {
-                                        Button(action: { markCompleted(false) }) {
+                                        Button(action: { markStatus(.incomplete) }) {
                                             VStack(spacing: 8) {
                                                 ZStack {
                                                     Circle()
@@ -350,7 +350,7 @@ struct LogTodayView: View {
                                             }
                                         }
                                         
-                                        Button(action: { markCompleted(true) }) {
+                                        Button(action: { markStatus(.completed) }) {
                                             VStack(spacing: 8) {
                                                 ZStack {
                                                     Circle()
@@ -361,6 +361,22 @@ struct LogTodayView: View {
                                                         .foregroundColor(.green)
                                                 }
                                                 Text("Completed")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                        
+                                        Button(action: { markStatus(.notLogged) }) {
+                                            VStack(spacing: 8) {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color.gray.opacity(0.15))
+                                                        .frame(width: 70, height: 70)
+                                                    Image(systemName: "circle")
+                                                        .font(.title2.bold())
+                                                        .foregroundColor(.gray)
+                                                }
+                                                Text("Unlogged")
                                                     .font(.caption)
                                                     .foregroundColor(.secondary)
                                             }
@@ -402,8 +418,8 @@ struct LogTodayView: View {
         .colorScheme(.dark)
     }
     
-    private func markCompleted(_ status: Bool) {
-        actions[currentIndex].isCompleted = status
+    private func markStatus(_ status: ActionStatus) {
+        actions[currentIndex].actionStatus = status
         
         if currentIndex < actions.count - 1 {
             withAnimation {
@@ -491,5 +507,187 @@ struct EditNorthStarView: View {
             }
         }
         .colorScheme(.dark)
+    }
+} 
+
+struct LogYesterdayView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    
+    @State var actions: [DailyAction]
+    @State private var currentIndex: Int = 0
+    @FocusState private var isTextFieldFocused: Bool
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                if actions.isEmpty {
+                    VStack {
+                        Spacer()
+                        Text("No actions to log for yesterday.")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                } else {
+                    TabView(selection: $currentIndex) {
+                        ForEach(actions.indices, id: \.self) { index in
+                            VStack(spacing: 0) {
+                                // Top section with title
+                                VStack(spacing: 20) {
+                                    Spacer()
+                                    
+                                    Text("Log yesterday's progress")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text(actions[index].pillar?.title ?? "Pillar")
+                                        .font(.largeTitle.bold())
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal)
+                                        .frame(minHeight: 80)
+                                    
+                                    Spacer()
+                                }
+                                .frame(maxWidth: .infinity)
+                                
+                                // Middle section with emoji and task
+                                VStack(spacing: 30) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.orange.opacity(0.15))
+                                            .frame(width: 160, height: 160)
+                                        Text(actions[index].pillar?.emoji ?? "❓")
+                                            .font(.system(size: 70))
+                                    }
+                                    
+                                    Text(actions[index].title)
+                                        .font(.title2.bold())
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal)
+                                        .frame(maxWidth: .infinity)
+                                        .lineLimit(nil)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .padding(.bottom, 24)
+                                }
+                                .frame(maxWidth: .infinity)
+                                
+                                // Bottom section with notes and buttons
+                                VStack(spacing: 30) {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        TextField("Add a note (optional)", text: Binding(
+                                            get: { actions[index].notes ?? "" },
+                                            set: { actions[index].notes = $0.isEmpty ? nil : $0 }
+                                        ), axis: .vertical)
+                                        .padding()
+                                        .background(Color.gray.opacity(0.15))
+                                        .cornerRadius(12)
+                                        .padding(.horizontal)
+                                        .focused($isTextFieldFocused)
+                                        .submitLabel(.done)
+                                        .onSubmit {
+                                            isTextFieldFocused = false
+                                        }
+                                    }
+                                    
+                                    HStack(spacing: 24) {
+                                        Button(action: { markStatus(.incomplete) }) {
+                                            VStack(spacing: 8) {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color.red.opacity(0.15))
+                                                        .frame(width: 70, height: 70)
+                                                    Image(systemName: "xmark")
+                                                        .font(.title2.bold())
+                                                        .foregroundColor(.red)
+                                                }
+                                                Text("Didn't do it")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                        
+                                        Button(action: { markStatus(.completed) }) {
+                                            VStack(spacing: 8) {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color.green.opacity(0.15))
+                                                        .frame(width: 70, height: 70)
+                                                    Image(systemName: "checkmark")
+                                                        .font(.title2.bold())
+                                                        .foregroundColor(.green)
+                                                }
+                                                Text("Completed")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                        
+                                        Button(action: { markStatus(.notLogged) }) {
+                                            VStack(spacing: 8) {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color.gray.opacity(0.15))
+                                                        .frame(width: 70, height: 70)
+                                                    Image(systemName: "circle")
+                                                        .font(.title2.bold())
+                                                        .foregroundColor(.gray)
+                                                }
+                                                Text("Unlog")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .tag(index)
+                        }
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black.edgesIgnoringSafeArea(.all))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if currentIndex > 0 {
+                        Button {
+                            withAnimation { currentIndex -= 1 }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                            Text("Back")
+                        }
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        saveLog()
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .colorScheme(.dark)
+    }
+    
+    private func markStatus(_ status: ActionStatus) {
+        actions[currentIndex].actionStatus = status
+        
+        if currentIndex < actions.count - 1 {
+            withAnimation {
+                currentIndex += 1
+            }
+        } else {
+            saveLog()
+            dismiss()
+        }
+    }
+    
+    private func saveLog() {
+        try? modelContext.save()
     }
 } 

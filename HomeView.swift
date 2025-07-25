@@ -46,7 +46,7 @@ struct HomeView: View {
     
     private var hasBeenLoggedToday: Bool {
         guard actionsAreSet else { return false }
-        return todaysActions.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+        return todaysActions.contains { $0.isLogged }
     }
     
     private var currentStreak: Int {
@@ -57,7 +57,7 @@ struct HomeView: View {
         
         // Check if today has been logged
         let todayActions = dailyActions.filter { calendar.isDate($0.date, inSameDayAs: today) }
-        let todayLogged = todayActions.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+        let todayLogged = todayActions.contains { $0.isLogged }
         
         if todayLogged {
             streak = 1
@@ -67,7 +67,7 @@ struct HomeView: View {
         // Count backwards through consecutive days
         while true {
             let actionsForDate = dailyActions.filter { calendar.isDate($0.date, inSameDayAs: currentDate) }
-            let hasLoggedActions = actionsForDate.contains { $0.isCompleted || ($0.notes != nil && !$0.notes!.isEmpty) }
+            let hasLoggedActions = actionsForDate.contains { $0.isLogged }
             
             if hasLoggedActions {
                 streak += 1

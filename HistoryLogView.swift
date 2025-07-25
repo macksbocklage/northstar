@@ -3,7 +3,9 @@ import SwiftData
 
 struct HistoryLogView: View {
     @Query(sort: \DailyAction.date, order: .reverse) private var dailyActions: [DailyAction]
+    @Query private var pillars: [Pillar]
     @State private var selectedDate = Date()
+    @State private var showingLogYesterday = false
     
     private var actionsForSelectedDate: [DailyAction] {
         dailyActions.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
@@ -15,15 +17,31 @@ struct HistoryLogView: View {
         return formatter.string(from: selectedDate)
     }
     
+    private var isYesterday: Bool {
+        Calendar.current.isDateInYesterday(selectedDate)
+    }
+    
+    private var yesterdayActions: [DailyAction] {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+        return dailyActions.filter { Calendar.current.isDate($0.date, inSameDayAs: yesterday) }
+    }
+    
+    private var yesterdayActionsToLog: [DailyAction] {
+        yesterdayActions.filter { !$0.isLogged }
+    }
+    
+    private var hasYesterdayActionsToLog: Bool {
+        !yesterdayActionsToLog.isEmpty
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             
             // Calendar
             CustomCalendarView(selectedDate: $selectedDate, dailyActions: dailyActions)
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 8)
                 .padding(.top, 16)
                 .padding(.bottom, 20)
-                .scaleEffect(0.9) // Make calendar 10% smaller
             
             // Selected Date Header
             VStack(spacing: 12) {
@@ -40,6 +58,14 @@ struct HistoryLogView: View {
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 2)
                                 .background(Color.blue.opacity(0.2))
+                                .cornerRadius(4)
+                        } else if isYesterday {
+                            Text("Yesterday")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.orange.opacity(0.2))
                                 .cornerRadius(4)
                         } else {
                             Text("\(actionsForSelectedDate.count) actions")
@@ -63,7 +89,12 @@ struct HistoryLogView: View {
             
             // Actions List
             if actionsForSelectedDate.isEmpty {
-                EmptyStateView(date: selectedDate)
+                EmptyStateView(
+                    date: selectedDate,
+                    isYesterday: isYesterday,
+                    hasYesterdayActions: hasYesterdayActionsToLog,
+                    onLogYesterday: { showingLogYesterday = true }
+                )
             } else {
                 ScrollView {
                     LazyVStack(spacing: 12) {
@@ -81,6 +112,9 @@ struct HistoryLogView: View {
         .background(Color.black.edgesIgnoringSafeArea(.all))
         .navigationBarHidden(true)
         .colorScheme(.dark)
+        .sheet(isPresented: $showingLogYesterday) {
+            LogYesterdayView(actions: yesterdayActionsToLog)
+        }
     }
 }
 
@@ -115,7 +149,7 @@ struct ActionHistoryCard: View {
                 Spacer()
                 
                 // Completion status
-                CompletionBadge(isCompleted: action.isCompleted)
+                CompletionBadge(action: action)
             }
             
             // Notes if available
@@ -146,23 +180,56 @@ struct ActionHistoryCard: View {
 }
 
 struct CompletionBadge: View {
-    let isCompleted: Bool
+    let action: DailyAction
+    
+    private var statusColor: Color {
+        switch action.actionStatus {
+        case .notLogged:
+            return .gray
+        case .completed:
+            return .green
+        case .incomplete:
+            return .red
+        }
+    }
+    
+    private var statusText: String {
+        switch action.actionStatus {
+        case .notLogged:
+            return "Not logged"
+        case .completed:
+            return "Done"
+        case .incomplete:
+            return "Incomplete"
+        }
+    }
+    
+    private var statusIcon: String {
+        switch action.actionStatus {
+        case .notLogged:
+            return "circle"
+        case .completed:
+            return "checkmark.circle.fill"
+        case .incomplete:
+            return "xmark.circle.fill"
+        }
+    }
     
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: isCompleted ? "checkmark.circle.fill" : "xmark.circle.fill")
+            Image(systemName: statusIcon)
                 .font(.title3)
-                .foregroundColor(isCompleted ? .green : .red)
+                .foregroundColor(statusColor)
             
-            Text(isCompleted ? "Done" : "Incomplete")
+            Text(statusText)
                 .font(.caption.weight(.medium))
-                .foregroundColor(isCompleted ? .green : .red)
+                .foregroundColor(statusColor)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill((isCompleted ? Color.green : Color.red).opacity(0.15))
+                .fill(statusColor.opacity(0.15))
         )
     }
 }
@@ -171,7 +238,11 @@ struct CompletionSummary: View {
     let actions: [DailyAction]
     
     private var completedCount: Int {
-        actions.filter { $0.isCompleted }.count
+        actions.filter { $0.actionStatus == .completed }.count
+    }
+    
+    private var loggedCount: Int {
+        actions.filter { $0.isLogged }.count
     }
     
     private var totalCount: Int {
@@ -179,13 +250,13 @@ struct CompletionSummary: View {
     }
     
     private var completionRate: Double {
-        guard totalCount > 0 else { return 0 }
-        return Double(completedCount) / Double(totalCount)
+        guard loggedCount > 0 else { return 0 }
+        return Double(completedCount) / Double(loggedCount)
     }
     
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
-            Text("\(completedCount)/\(totalCount)")
+            Text("\(completedCount)/\(loggedCount)")
                 .font(.title2.bold())
                 .foregroundColor(.white)
             
@@ -199,9 +270,11 @@ struct CompletionSummary: View {
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: 60, height: 4)
                 
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(completionRate > 0.7 ? .green : completionRate > 0.3 ? .orange : .red)
-                    .frame(width: 60 * completionRate, height: 4)
+                if loggedCount > 0 {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(completionRate > 0.7 ? .green : completionRate > 0.3 ? .orange : .red)
+                        .frame(width: 60 * completionRate, height: 4)
+                }
             }
         }
     }
@@ -209,6 +282,9 @@ struct CompletionSummary: View {
 
 struct EmptyStateView: View {
     let date: Date
+    let isYesterday: Bool
+    let hasYesterdayActions: Bool
+    let onLogYesterday: () -> Void
     
     private var isToday: Bool {
         Calendar.current.isDateInToday(date)
@@ -235,6 +311,8 @@ struct EmptyStateView: View {
                      "This date hasn't arrived yet" : 
                      isToday ? 
                      "Start by setting your daily actions" : 
+                     isYesterday && hasYesterdayActions ?
+                     "You had actions set but didn't log your progress" :
                      "No actions were recorded on this day")
                     .font(.body)
                     .foregroundColor(.secondary)
@@ -252,6 +330,19 @@ struct EmptyStateView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 25)
                                 .fill(Color.white)
+                        )
+                }
+                .padding(.top, 8)
+            } else if isYesterday && hasYesterdayActions {
+                Button(action: onLogYesterday) {
+                    Text("Log Yesterday's Actions")
+                        .font(.headline)
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 25)
+                                .fill(Color.orange)
                         )
                 }
                 .padding(.top, 8)
